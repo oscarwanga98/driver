@@ -12,7 +12,7 @@ export const connectWebSocket = (driverId: string) => {
     };
 
     ws.onclose = () => {
-      console.log("WebSocket connection closed");
+      console.log("WebSocket connection closed...");
       ws = null; // Reset WebSocket reference when closed
     };
 
