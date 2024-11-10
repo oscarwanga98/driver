@@ -2,8 +2,10 @@ import { useAuth } from "@clerk/clerk-expo";
 import * as Location from "expo-location";
 import { useEffect } from "react";
 
-import { connectWebSocket, sendLocationUpdate } from "@/app/(api)/ws"; // Import the WebSocket helper functions
+// Import the WebSocket helper functions
 import { useDriverLocationStore, useDriverSateStore } from "@/store";
+
+import { initializeSocket, getSocket } from "../services/socketService";
 
 const LocationUpdater = () => {
   const { setLocation } = useDriverLocationStore();
@@ -13,10 +15,9 @@ const LocationUpdater = () => {
 
   useEffect(() => {
     let isMounted = isOnline;
-
+    const socket = getSocket();
     // Connect WebSocket when component mounts
-    connectWebSocket(driverId);
-
+    initializeSocket(driverId);
     const updateLocation = async () => {
       try {
         const locationCurrent = await Location.getCurrentPositionAsync({});
@@ -37,7 +38,13 @@ const LocationUpdater = () => {
           });
 
           // Send location to the WebSocket server
-          sendLocationUpdate(driverId, latitude, longitude);
+          if (socket) {
+            socket.emit("driver-location-update", {
+              driverId,
+              latitude,
+              longitude,
+            });
+          }
         }
       } catch (error) {
         console.error("Error getting location:", error);
@@ -54,7 +61,7 @@ const LocationUpdater = () => {
       isMounted = false;
       clearInterval(interval); // Cleanup interval on unmount
     };
-  }, [setLocation, isOnline]);
+  }, [setLocation, isOnline, driverId]);
 
   return null;
 };
