@@ -159,3 +159,44 @@ declare interface DriverLocationStore {
   location: DriverLocation;
   setLocation: (newLocation: DriverLocation) => void;
 }
+declare interface PricingStore {
+  baseFare: number;
+  distanceCost: number;
+  timeCost: number;
+  surgeMultiplier: string;
+  weatherAdjustment: number;
+  driverRatingAdjustment: string;
+  prices: {
+    category: string;
+    maxPassengers: number;
+    engineCapacity: number;
+    price: string;
+  }[];
+  setBaseFare: (baseFare: number) => void;
+  setDistanceCost: (distanceCost: number) => void;
+  setTimeCost: (timeCost: number) => void;
+  setSurgeMultiplier: (surgeMultiplier: string) => void;
+  setWeatherAdjustment: (weatherAdjustment: number) => void;
+  setDriverRatingAdjustment: (driverRatingAdjustment: string) => void;
+  setPrices: (
+    prices: {
+      category: string;
+      maxPassengers: number;
+      engineCapacity: number;
+      price: string;
+    }[]
+  ) => void;
+  setPricingData: (
+    data: Omit<
+      PricingStore,
+      | "setBaseFare"
+      | "setDistanceCost"
+      | "setTimeCost"
+      | "setSurgeMultiplier"
+      | "setWeatherAdjustment"
+      | "setDriverRatingAdjustment"
+      | "setPrices"
+      | "setPricingData"
+    >
+  ) => void;
+}
