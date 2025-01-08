@@ -116,7 +116,9 @@ const Home = () => {
                 <Image source={icons.out} className="w-4 h-4" />
               </TouchableOpacity>
             </View>
+
             <DriverButton statusDriver={isOnline} toggle={toggleOnlineStatus} />
+
             {isOnline ? <LocationUpdater /> : ""}
             <>
               <Text className="text-xl font-JakartaBold mt-5 mb-3">

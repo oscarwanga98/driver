@@ -1,11 +1,15 @@
 import { useAuth } from "@clerk/clerk-expo";
 import * as Location from "expo-location";
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-// Import the WebSocket helper functions
 import { useDriverLocationStore, useDriverSateStore } from "@/store";
 
-import { initializeSocket, getSocket } from "../services/socketService";
+// Import WebSocket helper functions
+import {
+  initializeSocket,
+  getSocket,
+  sendMessage,
+} from "../services/socketService";
 
 const LocationUpdater = () => {
   const { setLocation } = useDriverLocationStore();
@@ -13,55 +17,65 @@ const LocationUpdater = () => {
   const { userId } = useAuth();
   const driverId = userId ?? "defaultDriverId";
 
+  const [isConnected, setIsConnected] = useState(false);
+
+  const fetchAndUpdateLocation = async () => {
+    try {
+      const locationCurrent = await Location.getCurrentPositionAsync({});
+      const address = await Location.reverseGeocodeAsync({
+        latitude: locationCurrent.coords.latitude,
+        longitude: locationCurrent.coords.longitude,
+      });
+
+      const latitude = locationCurrent.coords.latitude;
+      const longitude = locationCurrent.coords.longitude;
+      // Update local state
+      setLocation({
+        latitude,
+        longitude,
+        address: `${address[0]?.name ?? ""}, ${address[0]?.region ?? ""}`,
+      });
+
+      // Send location update to the server via WebSocket
+      sendMessage("driver-location-update", {
+        driverId,
+        latitude,
+        longitude,
+      });
+    } catch (error) {
+      console.error("Error fetching or sending location:", error);
+    }
+  };
+
   useEffect(() => {
-    let isMounted = isOnline;
-    const socket = getSocket();
-    // Connect WebSocket when component mounts
-    initializeSocket(driverId);
-    const updateLocation = async () => {
+    if (!isOnline) return;
+
+    const startWebSocket = async () => {
       try {
-        const locationCurrent = await Location.getCurrentPositionAsync({});
-        const address = await Location.reverseGeocodeAsync({
-          latitude: locationCurrent.coords?.latitude!,
-          longitude: locationCurrent.coords?.longitude!,
-        });
-
-        if (isMounted) {
-          const latitude = locationCurrent.coords?.latitude!;
-          const longitude = locationCurrent.coords?.longitude!;
-
-          // Update local state
-          setLocation({
-            latitude,
-            longitude,
-            address: `${address[0].name}, ${address[0].region}`,
-          });
-
-          // Send location to the WebSocket server
-          if (socket) {
-            socket.emit("driver-location-update", {
-              driverId,
-              latitude,
-              longitude,
-            });
-          }
-        }
+        await initializeSocket(driverId);
+        setIsConnected(true);
+        console.log("WebSocket successfully initialized.");
       } catch (error) {
-        console.error("Error getting location:", error);
+        console.error("Failed to initialize WebSocket:", error);
       }
     };
 
-    // Update location every 20 seconds
-    const interval = setInterval(updateLocation, 5000);
+    startWebSocket();
+
+    // Fetch and send location periodically
+    const interval = setInterval(() => {
+      if (isConnected) fetchAndUpdateLocation();
+    }, 20000);
 
     // Initial location fetch
-    updateLocation();
+    if (isConnected) fetchAndUpdateLocation();
 
     return () => {
-      isMounted = false;
-      clearInterval(interval); // Cleanup interval on unmount
+      const socket = getSocket();
+      if (socket) socket.disconnect();
+      clearInterval(interval);
     };
-  }, [setLocation, isOnline, driverId]);
+  }, [isOnline, driverId, isConnected]);
 
   return null;
 };
